@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Message
@@ -218,35 +219,39 @@ fun CartScreen(
 
                         // Associated Project Select list
                         Box(modifier = Modifier.fillMaxWidth()) {
-                            ExposedDropdownMenuBox(
-                                expanded = dropdownExpanded,
-                                onExpandedChange = { dropdownExpanded = !dropdownExpanded }
-                            ) {
-                                OutlinedTextField(
-                                    value = projectOptions[selectedProjectIndex],
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    label = { Text("Relating to Project") },
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .menuAnchor()
-                                )
+                            OutlinedTextField(
+                                value = projectOptions[selectedProjectIndex],
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Relating to Project") },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Toggle Dropdown"
+                                    )
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable { dropdownExpanded = true }
+                            )
 
-                                ExposedDropdownMenu(
-                                    expanded = dropdownExpanded,
-                                    onDismissRequest = { dropdownExpanded = false }
-                                ) {
-                                    projectOptions.forEachIndexed { index, option ->
-                                        DropdownMenuItem(
-                                            text = { Text(option) },
-                                            onClick = {
-                                                selectedProjectIndex = index
-                                                dropdownExpanded = false
-                                            }
-                                        )
-                                    }
+                            DropdownMenu(
+                                expanded = dropdownExpanded,
+                                onDismissRequest = { dropdownExpanded = false },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                projectOptions.forEachIndexed { index, option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option, style = MaterialTheme.typography.bodyMedium) },
+                                        onClick = {
+                                            selectedProjectIndex = index
+                                            dropdownExpanded = false
+                                        }
+                                    )
                                 }
                             }
                         }
