@@ -16,15 +16,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.ShoppingBag
-import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -76,33 +75,34 @@ class MainActivity : ComponentActivity() {
 fun MainAppLayout(viewModel: ShopViewModel) {
     val currentScreen by viewModel.currentScreen.collectAsState()
     val cartItems by viewModel.cartItems.collectAsState()
-    val totalCartUnits = cartItems.sumOf { it.quantity }
+    val totalCartUnits = cartItems.size // Number of sent contact messages in our database!
 
-    // Navigation setup
+    // Navigation setup for Professional Portfolio
     val navigationItems = listOf(
-        NavigationItemData("Shop", Screen.Home, Icons.Filled.ShoppingBag, Icons.Outlined.ShoppingBag, "tab_home"),
-        NavigationItemData("Wishlist", Screen.Favorites, Icons.Filled.Favorite, Icons.Outlined.FavoriteBorder, "tab_favorites"),
-        NavigationItemData("Cart", Screen.Cart, Icons.Filled.ShoppingCart, Icons.Outlined.ShoppingCart, "tab_cart", badgeCount = totalCartUnits),
-        NavigationItemData("Profile", Screen.Profile, Icons.Filled.Person, Icons.Outlined.Person, "tab_profile")
+        NavigationItemData("Home", Screen.Home, Icons.Filled.Home, Icons.Outlined.Home, "tab_home"),
+        NavigationItemData("About", Screen.Profile, Icons.Filled.Person, Icons.Outlined.Person, "tab_profile"),
+        NavigationItemData("Projects", Screen.Favorites, Icons.Filled.Code, Icons.Outlined.Code, "tab_favorites"),
+        NavigationItemData("Contact", Screen.Cart, Icons.Filled.Email, Icons.Outlined.Email, "tab_cart", badgeCount = totalCartUnits)
     )
 
     Scaffold(
         topBar = {
-            // Only show main header when not on detailed description screen
+            // Hide header on ProjectDetail to let the detail view shine full bleed
             if (currentScreen !is Screen.ProductDetail) {
                 TopAppBar(
                     title = {
                         Column {
                             Text(
-                                text = "AURA SHOP",
-                                style = MaterialTheme.typography.titleLarge,
+                                text = "SHAROON SHAIK",
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Black,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.testTag("app_bar_title")
                             )
                             Text(
-                                text = "Explore limits of futuristic craft",
+                                text = "MSc CS & MBA | Aspiring Software Professional",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                             )
                         }
                     },
@@ -113,7 +113,7 @@ fun MainAppLayout(viewModel: ShopViewModel) {
             }
         },
         bottomBar = {
-            // Fluidly hide bottom buttons when reading specific product specifications
+            // Hide bottom bar on ProjectDetail for spaciousness
             if (currentScreen !is Screen.ProductDetail) {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -123,9 +123,9 @@ fun MainAppLayout(viewModel: ShopViewModel) {
                     navigationItems.forEach { navItem ->
                         val isSelected = when (currentScreen) {
                             Screen.Home -> navItem.screen is Screen.Home
+                            Screen.Profile -> navItem.screen is Screen.Profile
                             Screen.Favorites -> navItem.screen is Screen.Favorites
                             Screen.Cart -> navItem.screen is Screen.Cart
-                            Screen.Profile -> navItem.screen is Screen.Profile
                             else -> false
                         }
 
@@ -137,8 +137,8 @@ fun MainAppLayout(viewModel: ShopViewModel) {
                                     BadgedBox(
                                         badge = {
                                             Badge(
-                                                containerColor = MaterialTheme.colorScheme.error,
-                                                contentColor = MaterialTheme.colorScheme.onError
+                                                containerColor = MaterialTheme.colorScheme.tertiary,
+                                                contentColor = MaterialTheme.colorScheme.onTertiary
                                             ) {
                                                 Text(
                                                     text = navItem.badgeCount.toString(),
@@ -166,7 +166,7 @@ fun MainAppLayout(viewModel: ShopViewModel) {
                             label = {
                                 Text(
                                     text = navItem.label,
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = MaterialTheme.typography.labelSmall,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                 )
                             },
@@ -189,7 +189,6 @@ fun MainAppLayout(viewModel: ShopViewModel) {
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Render view-switcher with smooth fade effects
             AnimatedContent(
                 targetState = currentScreen,
                 transitionSpec = {
@@ -199,9 +198,9 @@ fun MainAppLayout(viewModel: ShopViewModel) {
             ) { screen ->
                 when (screen) {
                     is Screen.Home -> HomeScreen(viewModel = viewModel)
+                    is Screen.Profile -> ProfileScreen(viewModel = viewModel)
                     is Screen.Favorites -> FavoritesScreen(viewModel = viewModel)
                     is Screen.Cart -> CartScreen(viewModel = viewModel)
-                    is Screen.Profile -> ProfileScreen(viewModel = viewModel)
                     is Screen.ProductDetail -> ProductDetailScreen(
                         productId = screen.productId,
                         viewModel = viewModel
@@ -220,8 +219,3 @@ data class NavigationItemData(
     val tag: String,
     val badgeCount: Int = 0
 )
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(text = "Hello $name!", modifier = modifier)
-}

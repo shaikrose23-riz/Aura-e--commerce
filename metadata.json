@@ -1,6 +1,6 @@
 {
-  "name": "Aura Shop",
-  "description": "A high-fidelity Material 3 design e-commerce application featuring a catalog, categories, product details, favorites wishlist, persistent cart management via Room Database, and order checkouts.",
+  "name": "Sharoon Shaik",
+  "description": "A professional personal profile app for Sharoon Shaik, featuring sections for Home, About Me, Skills, Projects, and Contact inquiries.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

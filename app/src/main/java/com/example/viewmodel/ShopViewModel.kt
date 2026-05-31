@@ -101,6 +101,17 @@ class ShopViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Room DB actions
+    fun submitContactInquiry(senderNameEmail: String, messageText: String, categoryInt: Int, projectId: Int) {
+        viewModelScope.launch {
+            roomRepository.addToCart(
+                productId = projectId,
+                quantity = categoryInt,
+                size = senderNameEmail,
+                color = messageText
+            )
+        }
+    }
+
     fun addToCart(product: Product, quantity: Int, size: String, colorHex: Long) {
         viewModelScope.launch {
             val colorString = String.format("#%08X", colorHex)

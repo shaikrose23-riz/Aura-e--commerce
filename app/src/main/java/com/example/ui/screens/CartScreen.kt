@@ -1,184 +1,364 @@
 package com.example.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.data.database.CartItem
-import com.example.data.models.Product
-import com.example.ui.components.ProductDrawer
-import com.example.viewmodel.Screen
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.viewmodel.ShopViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CartScreen(
     viewModel: ShopViewModel,
     modifier: Modifier = Modifier
 ) {
-    val cartState by viewModel.cartItems.collectAsState()
+    val inboxItems by viewModel.cartItems.collectAsState()
     val allProducts = viewModel.allProducts
 
-    // Map Room entities to product matches
-    val itemsWithProducts = cartState.mapNotNull { cartItem ->
-        val matchedProduct = allProducts.find { it.id == cartItem.productId }
-        if (matchedProduct != null) {
-            Pair(cartItem, matchedProduct)
-        } else null
+    val context = LocalContext.current
+
+    // Form states
+    var senderName by remember { mutableStateOf("") }
+    var senderEmail by remember { mutableStateOf("") }
+    var selectedProjectIndex by remember { mutableStateOf(0) } // 0 is general, 1-4 points to models
+    var messageContent by remember { mutableStateOf("") }
+    var inquiryTypeIndex by remember { mutableStateOf(0) } // 0 = Full-time job, 1 = Freelance project, 2 = General hello
+
+    val projectOptions = remember {
+        listOf("General Inquiry") + allProducts.map { it.name }
+    }
+    
+    val inquiryTypes = remember {
+        listOf("Full-Time Role", "Freelance Project", "General Hello")
     }
 
-    if (itemsWithProducts.isEmpty()) {
-        EmptyCartPlaceholder(viewModel = viewModel)
-    } else {
-        // Calculate costs
-        val subtotal = itemsWithProducts.sumOf { it.first.quantity * it.second.price }
-        val shipping = if (subtotal > 150.0) 0.0 else 5.99
-        val grandTotal = subtotal + shipping
+    var dropdownExpanded by remember { mutableStateOf(false) }
 
-        Column(
-            modifier = modifier
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+    ) {
+        // Single screen visual, let's use a dual layout:
+        // Top list element/form inside scroll, bottom represents Inbox dynamic folder.
+        LazyColumn(
+            modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Spacer(modifier = Modifier.height(12.dp))
+            item {
+                Spacer(modifier = Modifier.height(12.dp))
 
-            // Main items scroll lists
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 16.dp),
-                modifier = Modifier.weight(1.0f)
-            ) {
-                items(itemsWithProducts, key = { it.first.id }) { (cartItem, product) ->
-                    CartItemRow(
-                        cartItem = cartItem,
-                        product = product,
-                        onIncrease = { viewModel.updateCartQuantity(cartItem.id, cartItem.quantity + 1) },
-                        onDecrease = { viewModel.updateCartQuantity(cartItem.id, cartItem.quantity - 1) },
-                        onRemove = { viewModel.removeCartItem(cartItem.id) }
-                    )
-                }
-            }
-
-            // Summary Checkout panel
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "ORDER SUMMARY",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Subtotal", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(String.format("$%.2f", subtotal), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Shipping & Delivery", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Direct Touch Communication Details Card
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = if (shipping == 0.0) "FREE" else String.format("$%.2f", shipping),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (shipping == 0.0) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    if (shipping > 0.0) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = String.format("Spend $%.2f more for Free Shipping!", 150.0 - subtotal),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Grand Total", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                        Text(
-                            text = String.format("$%.2f", grandTotal),
-                            style = MaterialTheme.typography.titleLarge,
+                            text = "DIRECT CONTACT",
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Black,
                             color = MaterialTheme.colorScheme.primary
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Email
+                        ContactItemRow(
+                            icon = Icons.Default.Email,
+                            label = "Email Address",
+                            value = "shaikrose23@gmail.com",
+                            onClick = {
+                                Toast.makeText(context, "Copied Email Address!", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // LinkedIn
+                        ContactItemRow(
+                            icon = Icons.Default.Share,
+                            label = "LinkedIn Profile",
+                            value = "linkedin.com/in/shaikrose23",
+                            onClick = {
+                                Toast.makeText(context, "Copied LinkedIn Profile Link!", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Phone
+                        ContactItemRow(
+                            icon = Icons.Default.Phone,
+                            label = "Phone Number",
+                            value = "+91 98765 43210",
+                            onClick = {
+                                Toast.makeText(context, "Copied Phone Number!", Toast.LENGTH_SHORT).show()
+                            }
+                        )
                     }
+                }
+            }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+            item {
+                // Interactive message submission card structure
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "SEND SHAROON A MESSAGE",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    // Final Action Trigger
-                    Button(
-                        onClick = { viewModel.checkout(grandTotal) },
+                        // Sender Name Input
+                        OutlinedTextField(
+                            value = senderName,
+                            onValueChange = { senderName = it },
+                            label = { Text("Your Name") },
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("contact_name_input")
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Sender Email Input
+                        OutlinedTextField(
+                            value = senderEmail,
+                            onValueChange = { senderEmail = it },
+                            label = { Text("Your Email") },
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("contact_email_input")
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Inquiry Type Chips selection
+                        Text(
+                            text = "Inquiry Category",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            inquiryTypes.forEachIndexed { index, typeText ->
+                                val isSelected = index == inquiryTypeIndex
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .background(
+                                            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable { inquiryTypeIndex = index }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = typeText.split(" ").last(), // Show last word to keep it fit
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Associated Project Select list
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            ExposedDropdownMenuBox(
+                                expanded = dropdownExpanded,
+                                onExpandedChange = { dropdownExpanded = !dropdownExpanded }
+                            ) {
+                                OutlinedTextField(
+                                    value = projectOptions[selectedProjectIndex],
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Relating to Project") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor()
+                                )
+
+                                ExposedDropdownMenu(
+                                    expanded = dropdownExpanded,
+                                    onDismissRequest = { dropdownExpanded = false }
+                                ) {
+                                    projectOptions.forEachIndexed { index, option ->
+                                        DropdownMenuItem(
+                                            text = { Text(option) },
+                                            onClick = {
+                                                selectedProjectIndex = index
+                                                dropdownExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Message body Input
+                        OutlinedTextField(
+                            value = messageContent,
+                            onValueChange = { messageContent = it },
+                            label = { Text("Message details...") },
+                            shape = RoundedCornerShape(12.dp),
+                            minLines = 3,
+                            maxLines = 5,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("contact_message_input")
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Submit action Button
+                        Button(
+                            onClick = {
+                                if (senderName.isBlank() || senderEmail.isBlank() || messageContent.isBlank()) {
+                                    Toast.makeText(context, "Please populate all fields!", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                
+                                val identifierNameEmail = "$senderName <$senderEmail>"
+                                val mockProjectId = if (selectedProjectIndex == 0) 0 else selectedProjectIndex
+                                
+                                // Submit message to local Room DB
+                                viewModel.submitContactInquiry(
+                                    senderNameEmail = identifierNameEmail,
+                                    messageText = messageContent,
+                                    categoryInt = inquiryTypeIndex + 1, // 1 to 3 represent categories
+                                    projectId = mockProjectId
+                                )
+
+                                Toast.makeText(context, "Message Submitted locally to Shaik's database!", Toast.LENGTH_LONG).show()
+                                
+                                // Reset fields
+                                senderName = ""
+                                senderEmail = ""
+                                messageContent = ""
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                .testTag("checkout_action_btn")
+                        ) {
+                            Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Submit Securely", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            // Inbox list view heading
+            item {
+                Text(
+                    text = "SENT MESSAGES (${inboxItems.size})",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                )
+            }
+
+            if (inboxItems.isEmpty()) {
+                item {
+                    Card(
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp)
-                            .testTag("checkout_action_btn"),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Confirm Checkout Securely", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Message,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Your sent messages fold is empty.\nWrite a message above to test Room database persistence!",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
                     }
+                }
+            } else {
+                items(inboxItems, key = { it.id }) { item ->
+                    InboxMessageCard(
+                        item = item,
+                        allProducts = allProducts,
+                        onDelete = { viewModel.removeCartItem(item.id) }
+                    )
                 }
             }
         }
@@ -186,161 +366,145 @@ fun CartScreen(
 }
 
 @Composable
-fun CartItemRow(
-    cartItem: CartItem,
-    product: Product,
-    onIncrease: () -> Unit,
-    onDecrease: () -> Unit,
-    onRemove: () -> Unit,
-    modifier: Modifier = Modifier
+fun ContactItemRow(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    onClick: () -> Unit
 ) {
-    var itemColor = Color.DarkGray
-    try {
-        if (cartItem.color.startsWith("#")) {
-            itemColor = Color(android.graphics.Color.parseColor(cartItem.color))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
         }
-    } catch (_: Exception) {}
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+fun InboxMessageCard(
+    item: com.example.data.database.CartItem,
+    allProducts: List<com.example.data.models.Product>,
+    onDelete: () -> Unit
+) {
+    val categoryLabel = when (item.quantity) {
+        1 -> "Full-Time Role"
+        2 -> "Freelance Project"
+        else -> "General Hello"
+    }
+
+    val relatingProduct = if (item.productId == 0) {
+        "General Inquiry"
+    } else {
+        allProducts.find { it.id == item.productId }?.name ?: "General Inquiry"
+    }
 
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .testTag("cart_item_card_${cartItem.id}")
+            .testTag("cart_item_card_${item.id}")
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Visual Miniature
-            ProductDrawer(
-                drawingType = product.drawingType,
-                primaryColor = itemColor,
-                gradientStart = Color(product.visualGradientStart),
-                gradientEnd = Color(product.visualGradientEnd),
-                modifier = Modifier
-                    .size(80.dp)
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Details section
-            Column(modifier = Modifier.weight(1.0f)) {
-                Text(
-                    text = product.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1
-                )
-                
-                Spacer(modifier = Modifier.height(2.dp))
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Size: ${cartItem.size}",
+                        text = item.size, // Holds: Sender Name <Email>
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Regarding: $relatingProduct",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(itemColor)
-                    )
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
+                // Delete trash button
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .testTag("cart_remove_btn_${item.id}")
                 ) {
-                    Text(
-                        text = String.format("$%.2f", product.price),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.primary
+                    Icon(
+                        imageVector = Icons.Default.DeleteOutline,
+                        contentDescription = "Delete Inquiry",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp)
                     )
-
-                    // Incrementers
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                    ) {
-                        IconButton(onClick = onDecrease, modifier = Modifier.size(28.dp).testTag("cart_dec_btn_${cartItem.id}")) {
-                            Icon(Icons.Default.Remove, contentDescription = "Sub", modifier = Modifier.size(14.dp))
-                        }
-
-                        Text(
-                            text = cartItem.quantity.toString(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 10.dp)
-                        )
-
-                        IconButton(onClick = onIncrease, modifier = Modifier.size(28.dp).testTag("cart_inc_btn_${cartItem.id}")) {
-                            Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(14.dp))
-                        }
-                    }
                 }
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Remove Button
-            IconButton(onClick = onRemove, modifier = Modifier.testTag("cart_remove_btn_${cartItem.id}")) {
-                Icon(
-                    imageVector = Icons.Default.DeleteOutline,
-                    contentDescription = "Delete from cart",
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+            // Message text
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                    .padding(10.dp)
+            ) {
+                Text(
+                    text = item.color, // Holds the message content!
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 16.sp
                 )
             }
-        }
-    }
-}
 
-@Composable
-fun EmptyCartPlaceholder(
-    viewModel: ShopViewModel,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = Icons.Default.ShoppingBag,
-            contentDescription = "Empty bag sign",
-            tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-            modifier = Modifier.size(80.dp)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Your digital cart is empty",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Black
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Explore the shop to search custom wireless audio,\ntrajectory backpacks, and ambient luminous lighting assets.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = { viewModel.navigateTo(Screen.Home) },
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            Text("Launch Catalog Browser", fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Category tag capsule overlay
+            Box(
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = categoryLabel,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
         }
     }
 }
